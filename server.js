@@ -118,6 +118,7 @@ app.post('/api/upload', authMiddleware, upload.single('archivo'), (req, res) => 
     });
 });
 
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en http://localhost:${PORT}`);
     console.log(`Panel Admin: http://localhost:${PORT}/admin.html`);
