@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de QR Dinámico</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; background: #f4f4f9; color: #333; }
+        .card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
+        h1, h2 { margin-top: 0; }
+        .qr-box { text-align: center; padding: 20px; border: 2px dashed #ddd; border-radius: 8px; margin: 15px 0; }
+        .qr-box img { max-width: 220px; }
+        input[type="password"], input[type="file"] { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; }
+        button { background: #2563eb; color: white; border: none; padding: 12px 20px; border-radius: 6px; cursor: pointer; font-size: 16px; width: 100%; font-weight: bold; }
+        button:hover { background: #1d4ed8; }
+        .status { padding: 10px; background: #e0f2fe; border-left: 4px solid #0284c7; border-radius: 4px; margin-bottom: 15px; }
+        .msg { margin-top: 15px; font-weight: bold; text-align: center; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h1>QR Dinámico</h1>
+        <p>Imprime o comparte este código QR. Su enlace nunca cambiará.</p>
+        
+        <div class="qr-box">
+            <img id="qrImage" src="" alt="Cargando QR...">
+            <p><strong id="qrUrl"></strong></p>
+            <a id="downloadQr" download="mi-qr-dinamico.png">Descargar imagen QR</a>
+        </div>
+
+        <div class="status">
+            <strong>Archivo activo actual:</strong> <span id="currentFile">Cargando...</span><br>
+            <small>Última actualización: <span id="updatedAt">-</span></small>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Cambiar archivo destino</h2>
+        <form id="uploadForm">
+            <label>Contraseña de Administrador:</label>
+            <input type="password" id="password" placeholder="Ingresa la contraseña (admin123)" required>
+            
+            <label>Selecciona el nuevo archivo (PDF, Imagen, Video, etc.):</label>
+            <input type="file" id="fileInput" required>
+            
+            <button type="submit">Actualizar Archivo del QR</button>
+        </form>
+        <div class="msg" id="message"></div>
+    </div>
+
+    <script>
+        async function loadStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            
+            document.getElementById('qrImage').src = data.qrImage;
+            document.getElementById('downloadQr').href = data.qrImage;
+            document.getElementById('qrUrl').textContent = data.qrUrl;
+            
+            if (data.currentFile && data.currentFile.original_name) {
+                document.getElementById('currentFile').textContent = data.currentFile.original_name;
+                document.getElementById('updatedAt').textContent = data.currentFile.updated_at;
+            } else {
+                document.getElementById('currentFile').textContent = 'Ninguno aún';
+            }
+        }
+
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const msg = document.getElementById('message');
+            const fileInput = document.getElementById('fileInput');
+            const password = document.getElementById('password').value;
+
+            const formData = new FormData();
+            formData.append('archivo', fileInput.files[0]);
+
+            msg.textContent = 'Subiendo y actualizando...';
+            msg.style.color = '#333';
+
+            try {
+                const res = await fetch('/api/upload', {
+                    method: 'POST',
+                    headers: { 'x-admin-password': password },
+                    body: formData
+                });
+                const result = await res.json();
+
+                if (res.ok) {
+                    msg.textContent = '¡Actualizado! El QR ya muestra el nuevo archivo.';
+                    msg.style.color = 'green';
+                    fileInput.value = '';
+                    loadStatus();
+                } else {
+                    msg.textContent = result.error || 'Error al subir';
+                    msg.style.color = 'red';
+                }
+            } catch (err) {
+                msg.textContent = 'Error de conexión con el servidor';
+                msg.style.color = 'red';
+            }
+        });
+
+        loadStatus();
+    </script>
+</body>
+</html>
